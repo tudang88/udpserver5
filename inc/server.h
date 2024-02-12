@@ -8,7 +8,7 @@
 #define MAX_SOCKETS 2
 #define MAX_NAME_SIZE 40
 
-
+#define INFTIMM -1
 // server will maintain 
 // a list of connected clients
 typedef struct client_info {
@@ -33,7 +33,6 @@ void remove_client(client_info_t *cli_list, const char *cli_name);
 int register_client(client_info_t *cli_list, const char *cli_name);
 void setup_server_socket(int sockfd, int port);
 void setup_udp_server();
-int get_max_fd(int *fd_list);
 void transfer_service(int* sockfd_list);
 void receive_from_client(int sockfd);
 int get_target_cli_index(client_info_t *cli_list, const char *cli_name);

@@ -30,7 +30,7 @@ must change acsite.m4 also, for configure's tests. */
     #include <sys/sysctl.h> 
 #endif
 #ifdef HAVE_POLL_H 
-    #include <poll.h> 
+    #include <poll.h>
 #endif
 #ifdef HAVE_SYS_EVENT_H 
     #include <sys/event.h> /* for kqueue */

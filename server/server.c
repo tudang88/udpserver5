@@ -56,43 +56,11 @@ void setup_udp_server()
         }
 
         // Setup server socket
-        setup_server_socket(socket_list[i], (i == 0) ? SERV_PORT1 : SERV_PORT2);
+        setup_server_socket(socket_list[i], server_ports[i]);
     }
 
     // call transfer service
     transfer_service(socket_list);
-}
-
-/**
- * calculate the max FD
-*/
-int get_max_fd(int *fd_list)
-{
-    // error handling
-    if (fd_list == NULL) {
-        return -1;
-    }
-
-    // get max FD
-    int max = *fd_list;
-    for (int i=0; i<MAX_SOCKETS; i++) {
-        if (*(fd_list + i) > max) {
-            max = *(fd_list + i);
-        }
-    }
-
-    return max;
-}
-
-/**
- * re-initialize read fds
-*/
-void re_init_readfds(fd_set *fd_set_prt, const int *sockfd_list)
-{
-    FD_ZERO(fd_set_prt);
-    for(int i=0; i<MAX_SOCKETS; i++) {
-        FD_SET(sockfd_list[i], fd_set_prt);
-    }    
 }
 
 /**
@@ -105,28 +73,33 @@ void transfer_service(int* sockfd_list)
     TIME_LOGGER("transfer_service -> START\n");
 
     int nready;
-    client_info_t connected_clients[MAX_CLIENTS];
-    fd_set rset;
-
+    // set up poll fd set
+    struct pollfd pset[MAX_SOCKETS];
+    for (int i=0; i<MAX_SOCKETS; i++) {
+        pset[i].fd = sockfd_list[i];
+        pset[i].events = POLLRDNORM;
+    }
     // monitor and handle incomming package
     for ( ; ; ) {
-        TIME_LOGGER("transfer_service -> select()\n");
-        re_init_readfds(&rset, sockfd_list);
-        nready = select(get_max_fd(sockfd_list) + 1, &rset, NULL, NULL, NULL);
+        TIME_LOGGER("transfer_service -> poll()\n");
+        // poll() with list of event
+        nready = poll(pset, MAX_SOCKETS, INFTIMM);
         // test all sockets
         for (int i=0; i<MAX_SOCKETS; i++) {
             // retrieve sockfd from socket list
             int sockfd = sockfd_list[i];                
-            TIME_LOGGER("socketfd:%d READY\n", sockfd);
+            TIME_LOGGER("CHECK socketfd:%d\n", sockfd);
+            TIME_LOGGER("revents:%#04x\n", pset[i].revents);
 
             // examine the socket ready for i/o or not yet
-            if (FD_ISSET(sockfd, &rset)) {
+            if (pset[i].revents & (POLLRDNORM | POLLERR)) {
                 // socket i ready for i/o
                 TIME_LOGGER("transfer_service -> socketfd READY\n");
-                receive_from_client(sockfd);                
-                // all ready sockets has been serviced
-                if (--nready <= 0) break;
+                receive_from_client(sockfd);
+                // if all ready sockets has been serviced
+                if (--nready <= 0) break;           
             }
+
         }
     }
     
